@@ -1,0 +1,165 @@
+---
+title: "Reproducible Research Project"
+author: "Marquianna Griffin"
+date: "11/25/2019"
+output:
+  pdf_document: default
+  'html_document: default': default
+  html_document: default
+---
+
+`````{r}
+library(knitr)
+opts_knit$set(root.dir = "~/Dropbox/Soc 8802 - Grad Interdisciplinary Specialization in Demography/Reproducible Research Project")
+##[Display text](URL)
+#[R Markdown cheat sheet] ##(https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf and https://www.markdowntutorial.com/)
+
+```
+
+
+
+## Illinois Criminal Justice Best Practices Act
+
+```{r}
+##rename 2017
+stock_2017 <- read.csv("prison_dec_2017.csv")
+
+##rename 2018
+stock_2018 <- read.csv("prison_dec_2018.csv")
+
+
+##summary statistics 
+summary(stock_2017)
+summary(stock_2018)
+```
+
+
+```{r}
+##clean dates - 2017
+library(lubridate)
+
+##clean dates - 2017
+stock_2017$Date_of_Birth <- mdy(stock_2017$Date_of_Birth)
+stock_2017$Current_Admission_Date <- mdy(stock_2017$Current_Admission_Date)
+stock_2017$Custody_Date <- mdy(stock_2017$Custody_Date)
+stock_2017$Sentence_Date <- mdy(stock_2017$Sentence_Date)
+stock_2017$Projected_MSR_Date3 <- mdy(stock_2017$Projected_MSR_Date3)
+stock_2017$Projected_Discharge_Date3 <- mdy(stock_2017$Projected_Discharge_Date3)
+
+##clean dates - 2018
+stock_2018$Current_Admission_Date3 <- dmy(stock_2018$Current_Admission_Date3)
+stock_2018$Date_of_Birth <- dmy(stock_2018$Date_of_Birth)
+stock_2018$Projected_MSR_Date4 <- dmy(stock_2018$Projected_MSR_Date4)
+stock_2018$Custody_Date <- dmy(stock_2018$Custody_Date)
+stock_2018$Sentence_Date <- dmy(stock_2018$Sentence_Date)
+stock_2018$Projected_Discharge_Date4 <- dmy(stock_2018$Projected_Discharge_Date4)
+```
+
+```{r}
+##change variable names
+library(data.table)
+setnames(stock_2017, "Projected_MSR_Date3", "Projected_MSR_Date")
+setnames(stock_2017, "Projected_Discharge_Date3", "Projected_Discharge_Date")
+
+setnames(stock_2018, "Current_Admission_Date3", "Current_Admission_Date")
+setnames(stock_2018, "Projected_MSR_Date4", "Projected_MSR_Date")
+setnames(stock_2018, "Projected_Discharge_Date4", "Projected_Discharge_Date")
+
+
+##head for all data
+head(stock_2017)
+head(stock_2018)
+
+##create table - 2017
+table(stock_2017$Admission_Type)
+prop.table(table(stock_2017$Admission_Type))
+```
+
+```{r}
+##admission table - n, % - 2017
+library(janitor)
+tabyl(stock_2017$Admission_Type, sort=TRUE)
+
+##admission table - n, %, cum % - 2017
+library(epiDisplay)
+tab1(stock_2017$Admission_Type, sort.group = "increasing", cum.percent = TRUE)
+
+##print table to latex - 2017
+library(stargazer)
+
+tabadm2017 <- tab1(stock_2017$Admission_Type, sort.group = "increasing", cum.percent = TRUE) 
+
+str(tabadm2017$output.table)
+
+stargazer(tabadm2017$output.table, type="latex", summary=FALSE, digits=1, title="2017 IDOC Admission Types")
+```
+
+```{r}
+## create table - 2018
+table(stock_2018$Admission_Type)
+prop.table(table(stock_2018$Admission_Type))
+
+##admission table - n, %, cum % - 2018
+tabyl(stock_2018$Admission_Type, sort=TRUE)
+tab1(stock_2018$Admission_Type, sort.group = "increasing", cum.percent = TRUE)
+
+##print table to latex - 2018
+tabadm2018 <- tab1(stock_2018$Admission_Type, sort.group = "increasing", cum.percent = TRUE) 
+
+str(tabadm2018$output.table)
+
+stargazer(tabadm2018$output.table, type="latex", summary=FALSE, digits=1, title="2018 IDOC Admission Types")
+```
+
+
+```{r}
+##add column(s) - Year
+stock_2017$Year <- 2017
+stock_2018$Year <- 2018
+
+  
+
+##merge
+all_prison <- rbind(stock_2017, stock_2018)
+head(all_prison)
+tail(all_prison)
+
+##table
+tbl_prison <-table(all_prison$Admission_Type, all_prison$Year)
+tbl_prison2 <- prop.table(tbl_prison, 2)
+tbl_prison2
+````
+
+##create bar chart
+```{r}
+#barplot(tbl_prison2)
+##add color and label x-axis
+#barplot(tbl_prison2, xlab="Year", col=1:17)
+##add legend
+barplot(tbl_prison2, legend=rownames(tbl_prison2), xlab="Year", col=1:17)
+```
+
+##convert table to data frame
+```{r}
+all_prison_df<-as.data.frame.matrix(tbl_prison2)
+all_prison_df$adm_type <-rownames(all_prison_df)
+
+library(reshape2)
+all_prison_long <- melt(all_prison_df, id.vars=c("adm_type"), value.name = "proportion")
+all_prison_long
+
+##rename "variable"
+names(all_prison_long)[2] <- paste("year")
+```
+
+```{r}
+library(ggplot2)
+
+## add stacked barplot
+graph <- ggplot(data = all_prison_long,
+                aes(y = proportion, x = year, fill = adm_type)) + 
+           geom_bar(position = "stack", stat = "identity") + 
+           geom_text(aes(label = paste0(round(100*proportion, 1), "%")), 
+                     position = position_stack(vjust = 0.5), size = 3)
+graph
+```
